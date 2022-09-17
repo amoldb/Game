@@ -80,6 +80,16 @@ typedef struct PLAYER
 	int32_t MP;
 } PLAYER;
 
+typedef struct ENEMYTANK
+{
+	GAMEBITMAP Sprite[5][4];
+	int32_t ScreenPosX;
+	int32_t ScreenPosY;
+	uint8_t Direction;
+	uint8_t CurrentPower;
+	int32_t TimeToChangeDirection;
+} ENEMYTANK;
+
 LRESULT CALLBACK WndProc(_In_ HWND, _In_ UINT, _In_ WPARAM, _In_ LPARAM);
 
 
