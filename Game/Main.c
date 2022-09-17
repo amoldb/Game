@@ -17,10 +17,9 @@ HWND gGameWindow;
 GAMEBITMAP gBackBuffer;
 GAMEPERFDATA gPerformanceData;
 PLAYER gPlayer;
-PLAYER gEnemyTank;
+ENEMYTANK gEnemyTank[4];
 __m128i data;
 BOOL gWindowHasFocus;
-int gTimeToChangeDirection;
 
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpszCmdLine, _In_ int iCmdShow)
 {
@@ -116,15 +115,18 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 	
 	// GetSystemInfo(&gPerformanceData.SystemInfo);
 	srand((unsigned int)time(0));
-	gTimeToChangeDirection = rand() % (GAME_RES_WIDTH - GAME_RES_HEIGHT);
+	for (int i = 0; i < 4; i++) {
+		gEnemyTank[i].TimeToChangeDirection = rand() % (GAME_RES_WIDTH - GAME_RES_HEIGHT);
+	}
 	gGameIsRunning = TRUE;
 
 	while (gGameIsRunning == TRUE) {
 		QueryPerformanceCounter((LARGE_INTEGER*)&FrameStart);
-
-		if (gTimeToChangeDirection < 2) {
-			gTimeToChangeDirection = rand() % GAME_RES_HEIGHT;
-			gEnemyTank.Direction = rand() % 4;
+		for (int i = 0; i < 4; i++) {
+			if (gEnemyTank[i].TimeToChangeDirection < 2) {
+				gEnemyTank[i].TimeToChangeDirection = rand() % GAME_RES_HEIGHT;
+				gEnemyTank[i].Direction = rand() % 4;
+			}
 		}
 		
 		while (PeekMessage(&msg, gGameWindow, 0, 0, PM_REMOVE)) {
@@ -180,7 +182,9 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 			PreviousUserCPUTime = CurrentUserCPUTime;
 			gPerformanceData.PreviousSystemTime = gPerformanceData.CurrentSystemTime;
 		}
-		gTimeToChangeDirection--;
+		for (int i = 0; i < 4; i++) {
+			gEnemyTank[i].TimeToChangeDirection--;
+		}
 	}
 
 	return ((int)msg.wParam);
@@ -454,26 +458,28 @@ DWORD InitializeEnemyTanks(void)
 {
 	DWORD Error = ERROR_SUCCESS;
 
-	gEnemyTank.ScreenPosX = 0;
-	gEnemyTank.ScreenPosY = 0;
-	gPlayer.CurrentPower = TANK_WITHOUT_POWER;
-	gPlayer.Direction = DIRECTION_DOWN;
+	for (int i = 0; i < 4; i++) {
+		gEnemyTank[i].ScreenPosX = i*90;
+		gEnemyTank[i].ScreenPosY = 0;
+		gEnemyTank[i].CurrentPower = TANK_WITHOUT_POWER;
+		gEnemyTank[i].Direction = DIRECTION_DOWN;
 
-	if ((Error = Load32BppBitmapFromFile("tank_down.bmp", &gEnemyTank.Sprite[TANK_WITHOUT_POWER][DIRECTION_DOWN])) != ERROR_SUCCESS) {
-		MessageBox(NULL, TEXT("Load32BppBitmapFromFile failed."), TEXT("Error"), MB_ICONERROR);
-		goto Exit;
-	}
-	if ((Error = Load32BppBitmapFromFile("tank_up.bmp", &gEnemyTank.Sprite[TANK_WITHOUT_POWER][DIRECTION_UP])) != ERROR_SUCCESS) {
-		MessageBox(NULL, TEXT("Load32BppBitmapFromFile failed."), TEXT("Error"), MB_ICONERROR);
-		goto Exit;
-	}
-	if ((Error = Load32BppBitmapFromFile("tank_left.bmp", &gEnemyTank.Sprite[TANK_WITHOUT_POWER][DIRECTION_LEFT])) != ERROR_SUCCESS) {
-		MessageBox(NULL, TEXT("Load32BppBitmapFromFile failed."), TEXT("Error"), MB_ICONERROR);
-		goto Exit;
-	}
-	if ((Error = Load32BppBitmapFromFile("tank_right.bmp", &gEnemyTank.Sprite[TANK_WITHOUT_POWER][DIRECTION_RIGHT])) != ERROR_SUCCESS) {
-		MessageBox(NULL, TEXT("Load32BppBitmapFromFile failed."), TEXT("Error"), MB_ICONERROR);
-		goto Exit;
+		if ((Error = Load32BppBitmapFromFile("enemy_down.bmp", &gEnemyTank[i].Sprite[TANK_WITHOUT_POWER][DIRECTION_DOWN])) != ERROR_SUCCESS) {
+			MessageBox(NULL, TEXT("Load32BppBitmapFromFile failed."), TEXT("Error"), MB_ICONERROR);
+			goto Exit;
+		}
+		if ((Error = Load32BppBitmapFromFile("enemy_up.bmp", &gEnemyTank[i].Sprite[TANK_WITHOUT_POWER][DIRECTION_UP])) != ERROR_SUCCESS) {
+			MessageBox(NULL, TEXT("Load32BppBitmapFromFile failed."), TEXT("Error"), MB_ICONERROR);
+			goto Exit;
+		}
+		if ((Error = Load32BppBitmapFromFile("enemy_left.bmp", &gEnemyTank[i].Sprite[TANK_WITHOUT_POWER][DIRECTION_LEFT])) != ERROR_SUCCESS) {
+			MessageBox(NULL, TEXT("Load32BppBitmapFromFile failed."), TEXT("Error"), MB_ICONERROR);
+			goto Exit;
+		}
+		if ((Error = Load32BppBitmapFromFile("enemy_right.bmp", &gEnemyTank[i].Sprite[TANK_WITHOUT_POWER][DIRECTION_RIGHT])) != ERROR_SUCCESS) {
+			MessageBox(NULL, TEXT("Load32BppBitmapFromFile failed."), TEXT("Error"), MB_ICONERROR);
+			goto Exit;
+		}
 	}
 Exit:
 	return (Error);
@@ -496,9 +502,17 @@ void RenderFrameGraphics(void)
 	ClearScreen(&Pixel);
 #endif
 
-	Blit32BppBitmapToBuffer(&gPlayer.Sprite[gPlayer.CurrentPower][gPlayer.Direction], gPlayer.ScreenPosX, gPlayer.ScreenPosY);
+	// Player1
+	Blit32BppBitmapToBuffer(&gPlayer.Sprite[gPlayer.CurrentPower][gPlayer.Direction],
+		gPlayer.ScreenPosX,
+		gPlayer.ScreenPosY);
 
-	Blit32BppBitmapToBuffer(&gEnemyTank.Sprite[gEnemyTank.CurrentPower][gEnemyTank.Direction], gEnemyTank.ScreenPosX, gEnemyTank.ScreenPosY);
+	// Enemy tanks
+	for (int i = 0; i < 4; i++) {
+		Blit32BppBitmapToBuffer(&gEnemyTank[i].Sprite[gEnemyTank[i].CurrentPower][gEnemyTank[i].Direction],
+			gEnemyTank[i].ScreenPosX,
+			gEnemyTank[i].ScreenPosY);
+	}
 
 	HDC DeviceContext = GetDC(gGameWindow);
 
@@ -541,34 +555,54 @@ void RenderFrameGraphics(void)
 
 void EnemyTankMovements(void)
 {
-	if (gEnemyTank.ScreenPosX == 0 ||
-		gEnemyTank.ScreenPosY == 0 ||
-		gEnemyTank.ScreenPosX == GAME_RES_WIDTH ||
-		gEnemyTank.ScreenPosY == GAME_RES_HEIGHT) {
-		gTimeToChangeDirection = 0;
-	}
-	if (gEnemyTank.Direction == DIRECTION_LEFT) {
-		if (gEnemyTank.ScreenPosX > 0) {
-			gEnemyTank.ScreenPosX--;
-		}
-	}
-	if (gEnemyTank.Direction == DIRECTION_RIGHT) {
-		if (gEnemyTank.ScreenPosX < GAME_RES_WIDTH - 16) {
-			gEnemyTank.ScreenPosX++;
-		}
-	}
-	if (gEnemyTank.Direction == DIRECTION_UP) {
-		if (gEnemyTank.ScreenPosY > 0) {
-			gEnemyTank.ScreenPosY--;
-		}
-	}
-	if (gEnemyTank.Direction == DIRECTION_DOWN) {
-		if (gEnemyTank.ScreenPosY < GAME_RES_HEIGHT - 16) {
-			gEnemyTank.ScreenPosY++;
-		}
-	}
+	for (int i = 0; i < 4; i++) {
 		
-	Blit32BppBitmapToBuffer(&gEnemyTank.Sprite[gEnemyTank.CurrentPower][gEnemyTank.Direction], gEnemyTank.ScreenPosX, gEnemyTank.ScreenPosY);
+		if (gEnemyTank[i].ScreenPosX == 0 ||
+			gEnemyTank[i].ScreenPosY == 0 ||
+			gEnemyTank[i].ScreenPosX+16 == GAME_RES_WIDTH ||
+			gEnemyTank[i].ScreenPosY+16 == GAME_RES_HEIGHT
+			) {
+			gEnemyTank[i].TimeToChangeDirection = 0;
+		}
+		else if(gEnemyTank[i].ScreenPosX+16 == gEnemyTank[i+1].ScreenPosX ||
+			gEnemyTank[i].ScreenPosX == gEnemyTank[i+1].ScreenPosX+16)
+			gEnemyTank[i].TimeToChangeDirection = 0;
+		
+		else if (gEnemyTank[i].ScreenPosX + 16 == gEnemyTank[i + 2].ScreenPosX ||
+			gEnemyTank[i].ScreenPosX == gEnemyTank[i + 2].ScreenPosX + 16)
+			gEnemyTank[i].TimeToChangeDirection = 0;
+
+		else if (gEnemyTank[i].ScreenPosY + 16 == gEnemyTank[i + 1].ScreenPosY ||
+			gEnemyTank[i].ScreenPosY == gEnemyTank[i + 1].ScreenPosY + 16)
+			gEnemyTank[i].TimeToChangeDirection = 0;
+
+		else if (gEnemyTank[i].ScreenPosY + 16 == gEnemyTank[i + 2].ScreenPosY ||
+			gEnemyTank[i].ScreenPosY == gEnemyTank[i + 2].ScreenPosY + 16)
+			gEnemyTank[i].TimeToChangeDirection = 0;
+
+		if (gEnemyTank[i].Direction == DIRECTION_LEFT) {
+			if (gEnemyTank[i].ScreenPosX > 0) {
+				gEnemyTank[i].ScreenPosX--;
+			}
+		}
+		if (gEnemyTank[i].Direction == DIRECTION_RIGHT) {
+			if (gEnemyTank[i].ScreenPosX < GAME_RES_WIDTH - 16) {
+				gEnemyTank[i].ScreenPosX++;
+			}
+		}
+		if (gEnemyTank[i].Direction == DIRECTION_UP) {
+			if (gEnemyTank[i].ScreenPosY > 0) {
+				gEnemyTank[i].ScreenPosY--;
+			}
+		}
+		if (gEnemyTank[i].Direction == DIRECTION_DOWN) {
+			if (gEnemyTank[i].ScreenPosY < GAME_RES_HEIGHT - 16) {
+				gEnemyTank[i].ScreenPosY++;
+			}
+		}
+
+		Blit32BppBitmapToBuffer(&gEnemyTank[i].Sprite[gEnemyTank[i].CurrentPower][gEnemyTank[i].Direction], gEnemyTank[i].ScreenPosX, gEnemyTank[i].ScreenPosY);
+	}
 }
 
 #ifdef SIMD
